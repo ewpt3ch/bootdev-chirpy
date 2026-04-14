@@ -2,10 +2,15 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 )
 
 func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
+	// placeholder for profane words
+	theProfane := []string{"kerfuffle", "sharbert", "fornax"}
 
 	type reqParameters struct {
 		Body string `json:"body"`
@@ -24,9 +29,22 @@ func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	type respParams struct {
-		Valid bool `json:"valid"`
+	type cleanedParams struct {
+		Cleaned_Body string `json:"cleaned_body"`
 	}
 
-	respondWithJSON(w, 200, respParams{Valid: true})
+	censoredChirp := replaceProfane(reqParams.Body, theProfane)
+	respondWithJSON(w, 200, cleanedParams{Cleaned_Body: censoredChirp})
+
+}
+
+func replaceProfane(chirp string, theProfane []string) string {
+	words := strings.Split(chirp, " ")
+	fmt.Printf("%q\n", words)
+	for i, word := range words {
+		if slices.Contains(theProfane, strings.ToLower(word)) {
+			words[i] = "****"
+		}
+	}
+	return strings.Join(words, " ")
 }
