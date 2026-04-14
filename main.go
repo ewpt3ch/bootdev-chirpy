@@ -16,6 +16,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
+	platform       string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -31,6 +32,8 @@ func main() {
 	const port = "8080"
 	godotenv.Load(".env")
 
+	platform := os.Getenv("PLATFORM")
+
 	dbURL := os.Getenv("DB_URL")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -41,6 +44,7 @@ func main() {
 	cfg := apiConfig{
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
+		platform:       platform,
 	}
 
 	mux := http.NewServeMux()
@@ -49,6 +53,7 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
 	mux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	mux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
+	mux.HandleFunc("POST /api/users", cfg.handlerCreateUser)
 
 	httpServe := &http.Server{
 		Addr:    ":" + port,

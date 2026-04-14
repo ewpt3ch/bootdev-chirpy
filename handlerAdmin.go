@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -21,8 +22,17 @@ func (c *apiConfig) handlerMetrics(w http.ResponseWriter, req *http.Request) {
 }
 
 func (c *apiConfig) handlerReset(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(200)
-	c.fileserverHits.Store(0)
-	w.Write([]byte("metrics reset to 0"))
+	if c.platform != "dev" {
+		respondWithError(w, 403, "Forbidden")
+		return
+	}
+
+	err := c.db.ResetUsers(req.Context())
+	if err != nil {
+		log.Printf("Failed to reset users table: %v", err)
+		respondWithError(w, 500, "Reset failed")
+		return
+	}
+	respondWithJSON(w, 200, "reset successful")
+
 }
