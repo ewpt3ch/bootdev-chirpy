@@ -40,7 +40,6 @@ func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
 
 func replaceProfane(chirp string, theProfane []string) string {
 	words := strings.Split(chirp, " ")
-	fmt.Printf("%q\n", words)
 	for i, word := range words {
 		if slices.Contains(theProfane, strings.ToLower(word)) {
 			words[i] = "****"
