@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -70,6 +71,62 @@ func (c *apiConfig) handlerChirps(w http.ResponseWriter, req *http.Request) {
 	}
 
 	respondWithJSON(w, 201, chirp)
+
+}
+
+func (c *apiConfig) handlerGetChirps(w http.ResponseWriter, req *http.Request) {
+	dbChirps, err := c.db.GetChirps(req.Context())
+	if err != nil {
+		log.Printf("Database error %v", err)
+		respondWithError(w, 500, "Failed to get chirps")
+		return
+	}
+
+	var respChirps = []Chirp{}
+	for _, chirp := range dbChirps {
+		respChirps = append(respChirps, Chirp{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		})
+	}
+
+	respondWithJSON(w, 200, respChirps)
+
+}
+
+func (c *apiConfig) handlerGetChirpByID(w http.ResponseWriter, req *http.Request) {
+
+	chirpID, err := uuid.Parse(req.PathValue("chirpID"))
+	if err != nil {
+		log.Printf("uuid error: %v", err)
+		respondWithError(w, 400, "invalid chirp id")
+		return
+	}
+
+	dbChirp, err := c.db.GetChirpByID(req.Context(), chirpID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			respondWithError(w, 404, "not found")
+			return
+		}
+
+		log.Printf("Database error %v", err)
+		respondWithError(w, 500, "failed to get chirp")
+		return
+	}
+
+	chirp := Chirp{
+		ID:        dbChirp.ID,
+		CreatedAt: dbChirp.CreatedAt,
+		UpdatedAt: dbChirp.UpdatedAt,
+		Body:      dbChirp.Body,
+		UserID:    dbChirp.UserID,
+	}
+
+	respondWithJSON(w, 200, chirp)
 
 }
 
