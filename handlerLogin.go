@@ -4,14 +4,17 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/ewpt3ch/chirpy/internal/auth"
+	"github.com/google/uuid"
 )
 
 func (c *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 	type reqParameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+		ExpiresIn int    `json:"expires_in_seconds"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -53,11 +56,31 @@ func (c *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	user := User{
+	expiresIn := time.Hour
+	if reqParams.ExpiresIn < 3600 && reqParams.ExpiresIn != 0 {
+		expiresIn = time.Duration(reqParams.ExpiresIn) * time.Second
+	}
+
+	token, err := auth.MakeJWT(dbuser.ID, c.jwt_secret, expiresIn)
+	if err != nil {
+		respondWithError(w, 500, "failed to create jwt")
+		return
+	}
+
+	type loginResponse struct {
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Email     string    `json:"email"`
+		Token     string    `json:"token"`
+	}
+
+	user := loginResponse{
 		ID:        dbuser.ID,
 		CreatedAt: dbuser.CreatedAt,
 		UpdatedAt: dbuser.UpdatedAt,
 		Email:     dbuser.Email,
+		Token:     token,
 	}
 
 	respondWithJSON(w, 200, user)

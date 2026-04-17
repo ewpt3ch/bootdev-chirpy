@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ewpt3ch/chirpy/internal/auth"
 	"github.com/ewpt3ch/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -23,14 +24,26 @@ type Chirp struct {
 }
 
 func (c *apiConfig) handlerChirps(w http.ResponseWriter, req *http.Request) {
+
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w, 401, "invalid auth header")
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, c.jwt_secret)
+	if err != nil {
+		respondWithError(w, 401, "invalid jwt")
+		return
+	}
+
 	type reqParameters struct {
-		Body    string    `json:"body"`
-		User_ID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
 	reqParams := reqParameters{}
-	err := decoder.Decode(&reqParams)
+	err = decoder.Decode(&reqParams)
 	if err != nil {
 		respondWithError(w, 500, "Something went wrong")
 		return
@@ -45,7 +58,7 @@ func (c *apiConfig) handlerChirps(w http.ResponseWriter, req *http.Request) {
 	id := uuid.New()
 	timeNow := time.Now()
 	body := chirpBody
-	user_id := reqParams.User_ID
+	user_id := userID
 
 	newChirp := database.CreateChirpParams{
 		ID:        id,

@@ -17,6 +17,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	jwt_secret     string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -33,6 +34,7 @@ func main() {
 	godotenv.Load(".env")
 
 	platform := os.Getenv("PLATFORM")
+	jwt_secret := os.Getenv("JWT_SECRET")
 
 	dbURL := os.Getenv("DB_URL")
 	db, err := sql.Open("postgres", dbURL)
@@ -45,6 +47,7 @@ func main() {
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
 		platform:       platform,
+		jwt_secret:     jwt_secret,
 	}
 
 	mux := http.NewServeMux()
