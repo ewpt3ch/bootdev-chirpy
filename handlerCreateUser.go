@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ewpt3ch/chirpy/internal/auth"
 	"github.com/ewpt3ch/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -19,14 +20,15 @@ type User struct {
 
 func (c *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request) {
 	type reqParameters struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
 	reqParams := reqParameters{}
 	err := decoder.Decode(&reqParams)
 	if err != nil {
-		respondWithError(w, 500, "Somethings went wrong")
+		respondWithError(w, 500, "Somethings went wrong json")
 		return
 	}
 
@@ -35,14 +37,26 @@ func (c *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
+	if len(reqParams.Password) == 0 {
+		respondWithError(w, 400, "No password in request")
+		return
+	}
+
 	id := uuid.New()
 	timeNow := time.Now()
 	email := reqParams.Email
+	password, err := auth.HashPassword(reqParams.Password)
+	if err != nil {
+		respondWithError(w, 500, "password issue")
+		return
+	}
+
 	newUser := database.CreateUserParams{
-		ID:        id,
-		CreatedAt: timeNow,
-		UpdatedAt: timeNow,
-		Email:     email,
+		ID:             id,
+		CreatedAt:      timeNow,
+		UpdatedAt:      timeNow,
+		Email:          email,
+		HashedPassword: password,
 	}
 
 	dbuser, err := c.db.CreateUser(req.Context(), newUser)
