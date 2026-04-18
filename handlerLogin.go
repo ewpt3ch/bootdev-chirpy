@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/ewpt3ch/chirpy/internal/auth"
+	"github.com/ewpt3ch/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
 func (c *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 	type reqParameters struct {
-		Email     string `json:"email"`
-		Password  string `json:"password"`
-		ExpiresIn int    `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -57,9 +57,6 @@ func (c *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 	}
 
 	expiresIn := time.Hour
-	if reqParams.ExpiresIn < 3600 && reqParams.ExpiresIn != 0 {
-		expiresIn = time.Duration(reqParams.ExpiresIn) * time.Second
-	}
 
 	token, err := auth.MakeJWT(dbuser.ID, c.jwt_secret, expiresIn)
 	if err != nil {
@@ -67,20 +64,39 @@ func (c *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	rtoken := auth.MakeRefreshToken()
+	timeNow := time.Now()
+	expiresAt := time.Now().Add(time.Hour * 60 * 24)
+
+	rtokenParams := database.CreateRefreshTokenParams{
+		Token:     rtoken,
+		CreatedAt: timeNow,
+		UpdatedAt: timeNow,
+		UserID:    dbuser.ID,
+		ExpiresAt: expiresAt,
+	}
+	_, err = c.db.CreateRefreshToken(req.Context(), rtokenParams)
+	if err != nil {
+		respondWithError(w, 500, "failed to insert refreshtoken")
+		return
+	}
+
 	type loginResponse struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
-		Token     string    `json:"token"`
+		ID           uuid.UUID `json:"id"`
+		CreatedAt    time.Time `json:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Email        string    `json:"email"`
+		Token        string    `json:"token"`
+		RefreshToken string    `json:"refresh_token"`
 	}
 
 	user := loginResponse{
-		ID:        dbuser.ID,
-		CreatedAt: dbuser.CreatedAt,
-		UpdatedAt: dbuser.UpdatedAt,
-		Email:     dbuser.Email,
-		Token:     token,
+		ID:           dbuser.ID,
+		CreatedAt:    dbuser.CreatedAt,
+		UpdatedAt:    dbuser.UpdatedAt,
+		Email:        dbuser.Email,
+		Token:        token,
+		RefreshToken: rtoken,
 	}
 
 	respondWithJSON(w, 200, user)
