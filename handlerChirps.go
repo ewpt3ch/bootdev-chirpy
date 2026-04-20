@@ -88,11 +88,34 @@ func (c *apiConfig) handlerChirps(w http.ResponseWriter, req *http.Request) {
 }
 
 func (c *apiConfig) handlerGetChirps(w http.ResponseWriter, req *http.Request) {
-	dbChirps, err := c.db.GetChirps(req.Context())
-	if err != nil {
-		log.Printf("Database error %v", err)
-		respondWithError(w, 500, "Failed to get chirps")
-		return
+
+	var dbChirps = []database.Chirp{}
+	var err error
+
+	if len(req.URL.Query().Get("author_id")) != 0 {
+		UserID := req.URL.Query().Get("author_id")
+		userID, err := uuid.Parse(UserID)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "invalid uuid")
+			return
+		}
+		dbChirps, err = c.db.GetChirpsByUserID(req.Context(), userID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				respondWithError(w, http.StatusNotFound, "author not found")
+				return
+			}
+			log.Printf("database error: %v", err)
+			respondWithError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+	} else {
+		dbChirps, err = c.db.GetChirps(req.Context())
+		if err != nil {
+			log.Printf("Database error %v", err)
+			respondWithError(w, 500, "Failed to get chirps")
+			return
+		}
 	}
 
 	var respChirps = []Chirp{}

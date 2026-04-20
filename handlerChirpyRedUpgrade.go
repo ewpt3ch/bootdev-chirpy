@@ -6,11 +6,23 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ewpt3ch/chirpy/internal/auth"
 	"github.com/ewpt3ch/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
 func (c *apiConfig) handlerChirpyRedUpgrade(w http.ResponseWriter, req *http.Request) {
+
+	token, err := auth.GetApiKey(req.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "invalid auth header")
+		return
+	}
+
+	if token != c.polka_key {
+		respondWithError(w, http.StatusUnauthorized, "invalid token")
+		return
+	}
 
 	type reqParameters struct {
 		Event string `json:"event"`
@@ -21,7 +33,7 @@ func (c *apiConfig) handlerChirpyRedUpgrade(w http.ResponseWriter, req *http.Req
 
 	decoder := json.NewDecoder(req.Body)
 	reqParams := reqParameters{}
-	err := decoder.Decode(&reqParams)
+	err = decoder.Decode(&reqParams)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "json decode failed")
 		return
