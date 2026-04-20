@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -115,6 +116,13 @@ func (c *apiConfig) handlerGetChirps(w http.ResponseWriter, req *http.Request) {
 			log.Printf("Database error %v", err)
 			respondWithError(w, 500, "Failed to get chirps")
 			return
+		}
+	}
+
+	if len(req.URL.Query().Get("sort")) != 0 {
+		order := req.URL.Query().Get("sort")
+		if order == "desc" {
+			sort.Slice(dbChirps, func(i, j int) bool { return dbChirps[i].CreatedAt.After(dbChirps[j].CreatedAt) })
 		}
 	}
 
