@@ -88,6 +88,7 @@ func (c *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		Email        string    `json:"email"`
 		Token        string    `json:"token"`
 		RefreshToken string    `json:"refresh_token"`
+		IsChirpyRed  bool      `json:"is_chirpy_red"`
 	}
 
 	user := loginResponse{
@@ -97,6 +98,7 @@ func (c *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		Email:        dbuser.Email,
 		Token:        token,
 		RefreshToken: rtoken,
+		IsChirpyRed:  dbuser.IsChirpyRed,
 	}
 
 	respondWithJSON(w, 200, user)
